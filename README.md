@@ -1,8 +1,8 @@
 # AirPlay Solace — Shairport-Sync Manager & GTK3 Control Suite
 
-A self-contained manager script that compiles [`shairport-sync`](https://github.com/mikebrady/shairport-sync) from source and installs **AirPlay Solace**, an on-demand AirPlay 1 Classic receiver paired with an embedded GTK3 Python GUI — designed for Raspberry Pi OS.
+A self-contained manager script that compiles [`shairport-sync`](https://github.com/mikebrady/shairport-sync) from source and installs **AirPlay Solace**, an on-demand AirPlay 1 Classic receiver paired with an custom embedded GTK3 Python GUI — designed for Raspberry Pi OS and optimized for Pi Touch Screens.
 
-Unlike standard shairport-sync installations, this receiver **never runs as a boot daemon**. This is critical — running shairport-sync as a system service at boot races PipeWire's audio device enumeration and breaks HDMI and AUX output on Raspberry Pi hardware.
+Unlike standard shairport-sync installations, this receiver **never runs as a boot daemon**. This is critical — running shairport-sync as a system service at boot races PipeWire's audio device enumeration and breaks HDMI and AUX output on Raspberry Pi OS.
 
 ---
 
