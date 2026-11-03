@@ -2,9 +2,11 @@
 # ==============================================================================
 # shairport-sync-manager.sh
 # AirPlay 1 Classic Receiver — On-Demand Only, PipeWire-Safe
-# Version: 4.3
+# Version: 4.4
 # Status: 🟢 GOLD (Production-Ready)
-# Last updated: 2026-06-20
+# Last updated: 2026-11-03
+# Hardware: Raspberry Pi 4 and Pi 400 (same BCM2711 SoC). The Pi 400 has no
+#           3.5mm jack — use HDMI, Bluetooth or a USB audio adapter.
 #
 # Compiles shairport-sync from source and installs an on-demand AirPlay 1
 # Classic receiver with embedded GTK3 Python GUI called AirPlay Solace.
@@ -96,6 +98,14 @@
 #      toggle state.
 #
 # VERSION HISTORY:
+#   v4.4 (Nov 2026) — Pi 400 support noted (same BCM2711 as Pi 4; no 3.5mm
+#                     jack, so aux examples are marked Pi 4 only and USB audio
+#                     is listed). FIX: PipeWire sink override key is
+#                     "sink_target" in shairport-sync 5.x — "sink" belongs to
+#                     the pulseaudio section and was silently ignored in the
+#                     pipewire block. Config reference links updated to
+#                     scripts/shairport-sync.conf (old .conf.sample removed
+#                     upstream). Verified against shairport-sync 5.6.2.
 #   v4.3 (Jun 2026) — Opt-in "start at login" via XDG autostart (NOT systemd
 #                     enable). Gtk.CheckButton in AirPlay Solace writes/removes
 #                     ~/.config/autostart/airplay-solace-autostart.desktop
@@ -131,7 +141,7 @@ set -euo pipefail
 # ──────────────────────────────────────────────────────────────────────────────
 REPO_URL="https://github.com/mikebrady/shairport-sync.git"
 BUILD_DIR="${TMPDIR:-/tmp}/shairport-sync-build"
-SCRIPT_VERSION="4.3"
+SCRIPT_VERSION="4.4"
 
 INSTALL_PREFIX="${HOME}/.local"
 BIN_DIR="${INSTALL_PREFIX}/bin"
@@ -602,7 +612,8 @@ build_shairport_sync() {
 # Output routing:
 #   output_backend = "pipewire" sends audio to PipeWire's default sink.
 #   Change your system default audio output in the taskbar volume menu to
-#   switch between HDMI, aux (3.5mm), and Bluetooth — shairport-sync follows.
+#   switch between HDMI, aux (3.5mm, Pi 4 only), Bluetooth or USB audio —
+#   shairport-sync follows.
 #   No config file changes needed to switch outputs.
 # ──────────────────────────────────────────────────────────────────────────────
 write_user_config() {
@@ -625,17 +636,18 @@ write_user_config() {
     log_info "Writing default config → ${CONFIG_FILE}"
     cat > "${CONFIG_FILE}" << 'EOF'
 // Shairport Sync — AirPlay 1 (Classic) config  (v5 compatible)
-// Full reference: https://github.com/mikebrady/shairport-sync/blob/master/shairport-sync.conf.sample
+// Full reference: https://github.com/mikebrady/shairport-sync/blob/master/scripts/shairport-sync.conf
 //
 // OUTPUT ROUTING:
 //   output_backend = "pipewire" sends audio to your PipeWire default sink.
-//   To switch between HDMI, aux (3.5mm jack), or Bluetooth — just change your
+//   To switch between HDMI, aux (3.5mm jack — Pi 4 only, the Pi 400 has none),
+//   Bluetooth or USB audio — just change your
 //   system default audio output in the taskbar volume/sound menu BEFORE
 //   starting AirPlay. No changes to this file are needed.
 //
 //   To hardcode a specific output (e.g. always use HDMI even if BT is default):
 //   1. Use menu option 4 (Show audio sinks) to find the exact sink name
-//   2. Uncomment the sink line in the pipewire {} section below
+//   2. Uncomment the sink_target line in the pipewire {} section below
 //
 // PORT NOTE:
 //   shairport-sync uses port 5000. Only one AirPlay receiver can use it at a
@@ -653,14 +665,16 @@ general = {
 };
 
 // PipeWire-specific settings
-// Ref: https://github.com/mikebrady/shairport-sync/blob/master/shairport-sync.conf.sample
+// Ref: https://github.com/mikebrady/shairport-sync/blob/master/scripts/shairport-sync.conf
 pipewire = {
     // To hardcode a specific output sink (optional):
     //   1. Run menu option 4 to list available sink names
     //   2. Find your device (e.g. "alsa_output.platform-fef05700.hdmi.hdmi-stereo"
     //      for HDMI, or "bluez_output.XX_XX_XX_XX_XX_XX.1" for Bluetooth)
     //   3. Uncomment and paste the name below:
-    // sink = "alsa_output.platform-fef05700.hdmi.hdmi-stereo";
+    //   NOTE: the key is "sink_target" (shairport-sync 5.x). "sink" is only
+    //   read in the pulseaudio section and is ignored here.
+    // sink_target = "alsa_output.platform-fef05700.hdmi.hdmi-stereo";
     //
     // Default (commented out): follows your system default audio output.
     // This is the easiest option — just set your preferred output in the
@@ -874,7 +888,7 @@ do_start_service() {
         echo "    • Android: use an AirPlay sender app (e.g. AirPlay & DLNA)"
         echo "    • Select: $(hostname)"
         echo ""
-        echo "  To switch audio output (HDMI / aux / Bluetooth):"
+        echo "  To switch audio output (HDMI / aux / Bluetooth / USB):"
         echo "    Stop AirPlay, change your default audio output in the"
         echo "    taskbar, then Start again."
         echo ""
@@ -946,11 +960,15 @@ do_show_audio_sinks() {
     echo ""
     echo "  Common sink names on Pi OS Trixie:"
     echo "    HDMI      : alsa_output.platform-fef05700.hdmi.hdmi-stereo"
-    echo "    Aux 3.5mm : alsa_output.platform-bcm2835_audio.stereo-fallback"
+    echo "    Aux 3.5mm : alsa_output.platform-bcm2835_audio.stereo-fallback  (Pi 4 only)"
     echo "    Bluetooth : bluez_output.XX_XX_XX_XX_XX_XX.1  (MAC address varies)"
+    echo "    USB audio : alsa_output.usb-...  (name varies by device)"
+    echo ""
+    echo "  Pi 400: there is no 3.5mm jack — use HDMI, Bluetooth or a USB"
+    echo "  audio adapter. Check the list above for the exact names."
     echo ""
     echo "  To hardcode a sink: use menu option 5 (Edit config) and set"
-    echo '    sink = "your-sink-name-here";'
+    echo '    sink_target = "your-sink-name-here";'
     echo "  in the pipewire { } block."
     echo ""
 
@@ -1343,7 +1361,7 @@ class AirplaySolace(Gtk.Window):
         t = Gtk.Label(label="AirPlay Solace")
         _sty(t, "label-title"); t.set_halign(Gtk.Align.START)
         t.set_ellipsize(Pango.EllipsizeMode.END)
-        s = Gtk.Label(label="Pi 4  ·  Trixie  ·  AirPlay 1 Receiver")
+        s = Gtk.Label(label="Pi 4 / 400  ·  Trixie  ·  AirPlay 1 Receiver")
         _sty(s, "label-sub"); s.set_halign(Gtk.Align.START)
         s.set_ellipsize(Pango.EllipsizeMode.END)
         col.pack_start(t, False, False, 0)
@@ -2038,7 +2056,7 @@ draw_menu() {
     # ── Box 1: header + status ──────────────────────────────────────────────
     echo -e "${CYAN}${BOLD}  ╔══════════════════════════════════════════════════╗${NC}"
     echo -e "${CYAN}${BOLD}  ║   Shairport Sync Manager  v${SCRIPT_VERSION}                  ║${NC}"
-    echo -e "${CYAN}${BOLD}  ║   Pi 4 · Trixie · AirPlay 1 · On-Demand Only     ║${NC}"
+    echo -e "${CYAN}${BOLD}  ║   Pi 4/400 · Trixie · AirPlay 1 · On-Demand Only ║${NC}"
     echo -e "${CYAN}${BOLD}  ╠══════════════════════════════════════════════════╣${NC}"
     printf  "${CYAN}${BOLD}  ║${NC}  Installed : %-22s ${health_colour}%-11s${NC}${CYAN}${BOLD}║${NC}\n" \
             "$installed_ver" "$health_str"
@@ -2056,7 +2074,7 @@ draw_menu() {
     echo -e "${CYAN}${BOLD}  ║${NC}    ${BOLD}1)${NC}  Install / Repair Shairport Sync           ${CYAN}${BOLD}║${NC}"
     echo -e "${CYAN}${BOLD}  ║${NC}    ${BOLD}2)${NC}  Uninstall Shairport Sync                  ${CYAN}${BOLD}║${NC}"
     echo -e "${CYAN}${BOLD}  ║${NC}    ${BOLD}3)${NC}  Show logs (troubleshoot)                  ${CYAN}${BOLD}║${NC}"
-    echo -e "${CYAN}${BOLD}  ║${NC}    ${BOLD}4)${NC}  Show audio sinks (HDMI / aux / BT names)  ${CYAN}${BOLD}║${NC}"
+    echo -e "${CYAN}${BOLD}  ║${NC}    ${BOLD}4)${NC}  Show audio sinks (HDMI / aux / BT / USB)  ${CYAN}${BOLD}║${NC}"
     echo -e "${CYAN}${BOLD}  ║${NC}    ${BOLD}5)${NC}  Edit config                               ${CYAN}${BOLD}║${NC}"
     echo -e "${CYAN}${BOLD}  ║${NC}    ${BOLD}6)${NC}  Check for Updates                         ${CYAN}${BOLD}║${NC}"
     echo -e "${CYAN}${BOLD}  ║${NC}                                                  ${CYAN}${BOLD}║${NC}"
@@ -2095,7 +2113,7 @@ draw_menu() {
         echo -e "${YELLOW}${BOLD}  ║${NC}    ${BOLD}8)${NC}  Start AirPlay receiver                    ${YELLOW}${BOLD}║${NC}"
         echo -e "${YELLOW}${BOLD}  ║${NC}         Before starting:                         ${YELLOW}${BOLD}║${NC}"
         echo -e "${YELLOW}${BOLD}  ║${NC}         • Set audio output in taskbar            ${YELLOW}${BOLD}║${NC}"
-        echo -e "${YELLOW}${BOLD}  ║${NC}           (HDMI / 3.5mm aux / Bluetooth)         ${YELLOW}${BOLD}║${NC}"
+        echo -e "${YELLOW}${BOLD}  ║${NC}           (HDMI / Bluetooth / USB / Pi 4 aux)    ${YELLOW}${BOLD}║${NC}"
         echo -e "${YELLOW}${BOLD}  ║${NC}         • Pi appears as: ${BOLD}$(hostname)${NC}            ${YELLOW}${BOLD}║${NC}"
         echo -e "${YELLOW}${BOLD}  ║${NC}                                                  ${YELLOW}${BOLD}║${NC}"
         echo -e "${YELLOW}${BOLD}  ║${NC}    ${BOLD}9)${NC}  Stop AirPlay receiver  (not running)     ${YELLOW}${BOLD}║${NC}"
