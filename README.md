@@ -37,6 +37,7 @@ Unlike standard shairport-sync installations, this receiver **never runs as a bo
 
 ## 📋 Requirements
 
+* **Hardware:** Raspberry Pi 4 or Pi 400 (same BCM2711 chip). The Pi 400 has **no 3.5mm headphone jack** — use HDMI, Bluetooth or a USB audio adapter.
 * **OS:** Raspberry Pi OS Trixie (Debian 13) arm64
 * **Audio:** PipeWire (default on Trixie — never replaced or disabled by this script)
 * **Network:** Internet connection required for initial source build + Avahi/mDNS for AirPlay discovery
@@ -65,7 +66,7 @@ The manager automatically checks and installs missing build dependencies. All ar
 | **1** | Install / Repair shairport-sync |
 | **2** | Uninstall shairport-sync |
 | **3** | Show logs |
-| **4** | Show audio sinks (HDMI / AUX / Bluetooth names) |
+| **4** | Show audio sinks (HDMI / AUX / Bluetooth / USB names) |
 | **5** | Edit config |
 | **6** | Check for updates |
 | **7** | Open AirPlay Solace (touch GUI) |
@@ -84,6 +85,20 @@ Once the receiver is running, your Pi appears on the network by its hostname:
 | **Android** | Use an AirPlay sender app (e.g. AirMusic or AirPlay & DLNA) |
 | **Mac** | Click 🔊 in the menu bar → AirPlay → select your Pi |
 
+### Choosing an Audio Output
+
+Set your output in the taskbar volume menu **before** pressing Start — the receiver follows PipeWire's default output (HDMI, Bluetooth, USB audio, or the 3.5mm jack on a Pi 4).
+
+To always use one specific output, run menu option **4** to list the exact sink names, then option **5** to edit the config and set it in the `pipewire` block:
+
+```
+pipewire = {
+    sink_target = "alsa_output.platform-fef05700.hdmi.hdmi-stereo";
+};
+```
+
+> In shairport-sync 5.x the PipeWire key is `sink_target`. A `sink =` line inside the `pipewire` block is ignored (`sink` is a PulseAudio-only setting).
+
 ---
 
 ## 🔗 Cross-App Integration
@@ -101,6 +116,9 @@ AirPlay Solace integrates with **Cava Solace** ([Cava-Solace](https://github.com
 * [shairport-sync source](https://github.com/mikebrady/shairport-sync)
 * [Build instructions](https://github.com/mikebrady/shairport-sync/blob/master/BUILD.md)
 * [PipeWire integration](https://github.com/mikebrady/shairport-sync/blob/master/ADVANCED%20TOPICS/PulseAudioAndPipeWire.md)
+* [Sample config file (all settings, incl. `pipewire.sink_target`)](https://github.com/mikebrady/shairport-sync/blob/master/scripts/shairport-sync.conf)
+* [Configuration changes in version 5](https://github.com/mikebrady/shairport-sync/blob/master/CONFIGURATIONFILECHANGES5.md)
+* [Raspberry Pi 400 specifications](https://www.raspberrypi.com/products/raspberry-pi-400/specifications/)
 * [Trixie make install bug #2133](https://github.com/mikebrady/shairport-sync/issues/2133)
 * [Linger / boot daemon issue #1970](https://github.com/mikebrady/shairport-sync/issues/1970)
 * [Raspberry Pi forums](https://forums.raspberrypi.com/)
@@ -108,3 +126,5 @@ AirPlay Solace integrates with **Cava Solace** ([Cava-Solace](https://github.com
 ## Disclaimer
 
 Provided as-is, free of charge, for Raspberry Pi users. Not affiliated with the shairport-sync project, Raspberry Pi Ltd, or Apple Inc. Use at your own risk.
+
+Licensed under the MIT License — see [LICENSE](LICENSE).
